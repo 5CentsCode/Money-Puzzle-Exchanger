@@ -1,13 +1,67 @@
-#if _DEBUG
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
-#endif
+#include "PCH.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+#include "Shader.h"
+#include "Camera.h"
 
-const glm::uvec2 WINDOW_SIZE = glm::uvec2(320.0f, 224.0f);
+float vertices[] = {
+	// Positions        // texture coords
+	 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,   // top right
+	 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,   // bottom right
+	 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,   // bottom left
+	 0.0f, 1.0f, 0.0f, 0.0f, 1.0f    // top left
+};
+const unsigned int indices[] =
+{
+	0, 1, 3,
+	1, 2, 3
+};
+unsigned int VBO;
+unsigned int VAO;
+unsigned int EBO;
+
+const glm::uvec2 WINDOW_SIZE = glm::uvec2(304.0f, 224.0f);
+std::unordered_map<std::string, uint32> filePathToTexture;
+Shader* spriteShader;
+
+uint32 LoadTexture(const char* filepath)
+{
+	auto textureData = filePathToTexture.find(filepath);
+	if (textureData == filePathToTexture.end())
+	{
+		int32 imageWidth, imageHeight, nrChannels;
+		unsigned char* data = stbi_load(filepath, &imageWidth, &imageHeight, &nrChannels, 0);
+		if (data)
+		{
+			uint32 texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+			int32 RGBAInput = nrChannels == 3 ? GL_RGB : GL_RGBA;
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imageWidth, imageHeight, 0, RGBAInput, GL_UNSIGNED_BYTE, data);
+			glGenerateMipmap(GL_TEXTURE_2D);
+
+			stbi_image_free(data);
+			return texture;
+		}
+		else
+		{
+			printf("Failed to load texture\n");
+			return UINT32_MAX;
+		}
+	}
+
+	return textureData->second;
+}
 
 int main()
 {
@@ -15,6 +69,8 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 #endif
+
+	stbi_set_flip_vertically_on_load(true);
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -36,6 +92,37 @@ int main()
 		printf("Failed to initialize GLAD\n");
 		return -1;
 	}
+	glViewport(0, 0, (int32)WINDOW_SIZE.x * 3, (int32)WINDOW_SIZE.y * 3);
+
+	glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glGenBuffers(1, &EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	uint32 backgroundTexture = LoadTexture("data/textures/game/background.png");
+	glm::mat4 worldMatrix = glm::identity<glm::mat4>();
+	worldMatrix = glm::translate(worldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+	worldMatrix = glm::scale(worldMatrix, glm::vec3(WINDOW_SIZE, 0.0f));
+
+	Camera camera;
+	camera.SetAspectRatio(WINDOW_SIZE.x / (float)WINDOW_SIZE.y);
+	camera.SetOrthographicSize(WINDOW_SIZE.y);
+	camera.SetProjectionMode(Camera::ProjectionMode::Orthographic);
+
+	spriteShader = NEW Shader("data/shaders/sprite.vert", "data/shaders/sprite.frag");
+	spriteShader->Bind();
+	spriteShader->SetUniform("view", glm::lookAt(glm::vec3(WINDOW_SIZE, -1.0f) * 0.5f,  glm::vec3(WINDOW_SIZE, 0.0f) * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f)));
+	spriteShader->SetUniform("projection", camera.GetProjectionMatrix());
 
 	glm::vec4 clearColor = glm::vec4(179, 69, 156, 255) / 255.0f;
 	glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
@@ -44,9 +131,18 @@ int main()
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+
+		spriteShader->SetUniform("model", worldMatrix);
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	delete spriteShader;
 
 	return 0;
 }
