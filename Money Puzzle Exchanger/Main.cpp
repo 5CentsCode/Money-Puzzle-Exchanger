@@ -1,4 +1,5 @@
 #include "PCH.h"
+#include <unordered_map>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -7,6 +8,7 @@
 #include <stb/stb_image.h>
 #include "Shader.h"
 #include "Camera.h"
+#include "Board.h"
 
 float vertices[] = {
 	// Positions        // texture coords
@@ -92,7 +94,9 @@ int main()
 		printf("Failed to initialize GLAD\n");
 		return -1;
 	}
-	glViewport(0, 0, (int32)WINDOW_SIZE.x * 3, (int32)WINDOW_SIZE.y * 3);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	// glViewport(0, 0, (int32)WINDOW_SIZE.x * 3, (int32)WINDOW_SIZE.y * 3);
 
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -109,14 +113,36 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
+	Board board1, board2;
+
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_1, LoadTexture("data/textures/game/coin_1.png"));
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_5, LoadTexture("data/textures/game/coin_5.png"));
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_10, LoadTexture("data/textures/game/coin_10.png"));
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_50, LoadTexture("data/textures/game/coin_50.png"));
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_100, LoadTexture("data/textures/game/coin_100.png"));
+	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_500, LoadTexture("data/textures/game/coin_500.png"));
+
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_1, LoadTexture("data/textures/game/coin_1.png"));
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_5, LoadTexture("data/textures/game/coin_5.png"));
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_10, LoadTexture("data/textures/game/coin_10.png"));
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_50, LoadTexture("data/textures/game/coin_50.png"));
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_100, LoadTexture("data/textures/game/coin_100.png"));
+	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_500, LoadTexture("data/textures/game/coin_500.png"));
+
+	board1.Position = glm::ivec2(8, 16);
+	board2.Position = glm::ivec2(WINDOW_SIZE.x - (8 + board2.Size.x * 16), 16);
+	
+	board1.GenerateGarbage(3);
+	board2.GenerateGarbage(5);
+
 	uint32 backgroundTexture = LoadTexture("data/textures/game/background.png");
-	glm::mat4 worldMatrix = glm::identity<glm::mat4>();
-	worldMatrix = glm::translate(worldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
-	worldMatrix = glm::scale(worldMatrix, glm::vec3(WINDOW_SIZE, 0.0f));
+	glm::mat4 backgroundWorldMatrix = glm::identity<glm::mat4>();
+	backgroundWorldMatrix = glm::translate(backgroundWorldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+	backgroundWorldMatrix = glm::scale(backgroundWorldMatrix, glm::vec3(WINDOW_SIZE, 0.0f));
 
 	Camera camera;
 	camera.SetAspectRatio(WINDOW_SIZE.x / (float)WINDOW_SIZE.y);
-	camera.SetOrthographicSize(WINDOW_SIZE.y);
+	camera.SetOrthographicSize((float)WINDOW_SIZE.y);
 	camera.SetProjectionMode(Camera::ProjectionMode::Orthographic);
 
 	spriteShader = NEW Shader("data/shaders/sprite.vert", "data/shaders/sprite.frag");
@@ -132,17 +158,25 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-
-		spriteShader->SetUniform("model", worldMatrix);
+		spriteShader->SetUniform("model", backgroundWorldMatrix);
 		glBindVertexArray(VAO);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		board1.Render(spriteShader, VAO, EBO);
+		board2.Render(spriteShader, VAO, EBO);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
 	delete spriteShader;
+
+	for (auto textureMap : filePathToTexture)
+	{
+		glDeleteTextures(1, &textureMap.second);
+	}
+	glfwTerminate();
 
 	return 0;
 }
