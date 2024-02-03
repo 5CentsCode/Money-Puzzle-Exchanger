@@ -11,16 +11,22 @@ private:
 
 public:
 
-	const glm::uvec2 Size = glm::uvec2(BoardWidth, BoardHeight);
+	const glm::ivec2 Size = glm::ivec2(BoardWidth, BoardHeight);
 	glm::ivec2 Position;
 
 	std::unordered_map<CoinType, uint32> m_coinTypeToTextureId;
+	uint32 m_characterTextureId;
 	
 public:
 	Board();
 	~Board();
 
+	void MoveCharacterLeft(void);
+	void MoveCharacterRight(void);
+
 	void GenerateGarbage(uint8 rows);
+	void ClearBoard();
+	void MoveCoinsDown();
 
 	void Render(class Shader* shader, const uint32& vao, const uint32& ebo);
 

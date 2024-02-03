@@ -9,6 +9,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Board.h"
+#include "Input.h"
 
 float vertices[] = {
 	// Positions        // texture coords
@@ -26,7 +27,8 @@ unsigned int VBO;
 unsigned int VAO;
 unsigned int EBO;
 
-const glm::uvec2 WINDOW_SIZE = glm::uvec2(304.0f, 224.0f);
+const glm::uvec2 PREFERRED_SIZE = glm::uvec2(304.0f, 224.0f);
+const glm::uvec2 WINDOW_SIZE = glm::uvec2(304.0f * 3, 224.0f * 3);
 std::unordered_map<std::string, uint32> filePathToTexture;
 Shader* spriteShader;
 
@@ -79,8 +81,9 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	glfwWindowHint(GLFW_FLOATING, GL_TRUE);
 
-	GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE.x * 3, WINDOW_SIZE.y * 3, "Money Puzzle Exchanger", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE.x, WINDOW_SIZE.y, "Money Puzzle Exchanger", NULL, NULL);
 	if (window == NULL)
 	{
 		printf("Failed to create GLFW window\n");
@@ -88,6 +91,14 @@ int main()
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	glfwSetWindowPos(window, 2560 + 2560 / 2 - WINDOW_SIZE.x / 2, 1440 / 2 - WINDOW_SIZE.y / 2);
+
+	glfwSetKeyCallback(window, Input::KeyCallback);
+	glfwSetCharCallback(window, Input::CharCallback);
+	glfwSetMouseButtonCallback(window, Input::MouseButtonCallback);
+	glfwSetCursorPosCallback(window, Input::MouseCursorPosCallback);   // Track mouse position changes
+	glfwSetScrollCallback(window, Input::MouseScrollCallback);
+	glfwSetCursorEnterCallback(window, Input::CursorEnterCallback);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -96,7 +107,6 @@ int main()
 	}
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	// glViewport(0, 0, (int32)WINDOW_SIZE.x * 3, (int32)WINDOW_SIZE.y * 3);
 
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -121,6 +131,7 @@ int main()
 	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_50, LoadTexture("data/textures/game/coin_50.png"));
 	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_100, LoadTexture("data/textures/game/coin_100.png"));
 	board1.m_coinTypeToTextureId.emplace(CoinType::Coin_500, LoadTexture("data/textures/game/coin_500.png"));
+	board1.m_characterTextureId = LoadTexture("data/textures/game/character.png");
 
 	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_1, LoadTexture("data/textures/game/coin_1.png"));
 	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_5, LoadTexture("data/textures/game/coin_5.png"));
@@ -128,9 +139,10 @@ int main()
 	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_50, LoadTexture("data/textures/game/coin_50.png"));
 	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_100, LoadTexture("data/textures/game/coin_100.png"));
 	board2.m_coinTypeToTextureId.emplace(CoinType::Coin_500, LoadTexture("data/textures/game/coin_500.png"));
+	board2.m_characterTextureId = LoadTexture("data/textures/game/character.png");
 
 	board1.Position = glm::ivec2(8, 16);
-	board2.Position = glm::ivec2(WINDOW_SIZE.x - (8 + board2.Size.x * 16), 16);
+	board2.Position = glm::ivec2(PREFERRED_SIZE.x - (8 + board2.Size.x * 16), 16);
 	
 	board1.GenerateGarbage(3);
 	board2.GenerateGarbage(5);
@@ -138,23 +150,44 @@ int main()
 	uint32 backgroundTexture = LoadTexture("data/textures/game/background.png");
 	glm::mat4 backgroundWorldMatrix = glm::identity<glm::mat4>();
 	backgroundWorldMatrix = glm::translate(backgroundWorldMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
-	backgroundWorldMatrix = glm::scale(backgroundWorldMatrix, glm::vec3(WINDOW_SIZE, 0.0f));
+	backgroundWorldMatrix = glm::scale(backgroundWorldMatrix, glm::vec3(PREFERRED_SIZE, 0.0f));
 
 	Camera camera;
-	camera.SetAspectRatio(WINDOW_SIZE.x / (float)WINDOW_SIZE.y);
-	camera.SetOrthographicSize((float)WINDOW_SIZE.y);
+	camera.SetAspectRatio(PREFERRED_SIZE.x / (float)PREFERRED_SIZE.y);
+	camera.SetOrthographicSize((float)PREFERRED_SIZE.y);
 	camera.SetProjectionMode(Camera::ProjectionMode::Orthographic);
 
 	spriteShader = NEW Shader("data/shaders/sprite.vert", "data/shaders/sprite.frag");
 	spriteShader->Bind();
-	spriteShader->SetUniform("view", glm::lookAt(glm::vec3(WINDOW_SIZE, -1.0f) * 0.5f,  glm::vec3(WINDOW_SIZE, 0.0f) * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f)));
+	spriteShader->SetUniform("view", glm::lookAt(glm::vec3(PREFERRED_SIZE, -1.0f) * 0.5f,  glm::vec3(PREFERRED_SIZE, 0.0f) * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f)));
 	spriteShader->SetUniform("projection", camera.GetProjectionMatrix());
 
 	glm::vec4 clearColor = glm::vec4(179, 69, 156, 255) / 255.0f;
 	glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 
+	float deltaTime;
+	float totalTime = (float)glfwGetTime();
+	int frameNum = 0;
+	float garbageTime = 0.0f;
+
 	while (!glfwWindowShouldClose(window))
 	{
+		if (Input::IsKeyPressed(Key_A))
+		{
+			board1.MoveCharacterLeft();
+		}
+		else if (Input::IsKeyPressed(Key_D))
+		{
+			board1.MoveCharacterRight();
+		}
+		if (Input::IsKeyPressed(Key_S))
+		{
+			board1.GenerateGarbage(1);
+		}
+
+		deltaTime = (float)glfwGetTime() - totalTime;
+		totalTime += deltaTime;
+
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindTexture(GL_TEXTURE_2D, backgroundTexture);
@@ -163,11 +196,19 @@ int main()
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+		garbageTime += deltaTime;
+		if (garbageTime >= 5.0f)
+		{
+			board1.GenerateGarbage(1);
+			board2.GenerateGarbage(1);
+			garbageTime = 0;
+		}
+
 		board1.Render(spriteShader, VAO, EBO);
 		board2.Render(spriteShader, VAO, EBO);
 
 		glfwSwapBuffers(window);
-		glfwPollEvents();
+		Input::PollInputEvents();
 	}
 
 	delete spriteShader;
