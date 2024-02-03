@@ -32,6 +32,67 @@ void Board::MoveCharacterRight(void)
 	}
 }
 
+void Board::ThrowCoinsInColumn(void)
+{
+	if (m_holdingCoin == Coin_None)
+	{
+		return;
+	}
+
+	for (int32 y = 0; y <= Size.y; y++)
+	{
+		CoinType coin = CoinType::Coin_None;
+		if (y != Size.y)
+		{
+			coin = m_coins[m_currentColumn - 1][y];
+		}
+
+		if (coin != Coin_None ||
+			y == Size.y)
+		{
+			for (int32 c = m_holdingCoinCount; c > 0; c--)
+			{
+				if (y - c < 0)
+				{
+					ClearBoard();
+					break;
+				}
+
+				m_coins[m_currentColumn - 1][y - c] = m_holdingCoin;
+			}
+
+			m_holdingCoin = Coin_None;
+			m_holdingCoinCount = 0;
+
+			return;
+		}
+	}
+
+	m_holdingCoin = Coin_None;
+	m_holdingCoinCount = 0;
+}
+
+void Board::GrabCoinsInColumn(void)
+{
+	for (int32 y = 0; y < Size.y; y++)
+	{
+		CoinType coin = m_coins[m_currentColumn - 1][y];
+
+		if (coin != Coin_None)
+		{
+			if (m_holdingCoin != Coin_None &&
+				m_holdingCoin != coin)
+			{
+				return;
+			}
+
+			m_holdingCoin = coin;
+			m_coins[m_currentColumn - 1][y] = Coin_None;
+			m_holdingCoinCount++;
+		}
+	}
+}
+
 void Board::GenerateGarbage(uint8 rows)
 {
 	for (int32 y = 0; y < rows; y++)

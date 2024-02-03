@@ -182,7 +182,11 @@ int main()
 		}
 		if (Input::IsKeyPressed(Key_S))
 		{
-			board1.GenerateGarbage(1);
+			board1.GrabCoinsInColumn();
+		}
+		if (Input::IsKeyPressed(Key_W))
+		{
+			board1.ThrowCoinsInColumn();
 		}
 
 		deltaTime = (float)glfwGetTime() - totalTime;

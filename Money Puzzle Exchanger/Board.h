@@ -23,6 +23,8 @@ public:
 
 	void MoveCharacterLeft(void);
 	void MoveCharacterRight(void);
+	void ThrowCoinsInColumn(void);
+	void GrabCoinsInColumn(void);
 
 	void GenerateGarbage(uint8 rows);
 	void ClearBoard();
@@ -34,5 +36,8 @@ private:
 
 	int m_currentColumn = 4;
 	CoinType m_coins[BoardWidth][BoardHeight];
+
+	CoinType m_holdingCoin = CoinType::Coin_None;
+	int m_holdingCoinCount = 0;
 };
 
