@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="Board.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Coin.h" />
     <ClInclude Include="CoinType.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="KeyCodes.h" />

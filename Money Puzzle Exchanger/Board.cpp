@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include <glm/gtx/matrix_decompose.hpp>
+#include "glm/gtx/hash.hpp"
 #include "Board.h"
 #include "glad/glad.h"
 #include "Shader.h"
@@ -59,6 +60,47 @@ void Board::ThrowCoinsInColumn(void)
 				}
 
 				m_coins[m_currentColumn - 1][y - c] = m_holdingCoin;
+			}
+
+			std::unordered_set<glm::ivec2> coinsToCombine;
+			if (CombineCoins(glm::ivec2(m_currentColumn - 1, y - m_holdingCoinCount), coinsToCombine) == true)
+			{
+				CoinType combineToType = CoinType::Coin_None;
+				switch (m_holdingCoin)
+				{
+					case Coin_1:
+						combineToType = CoinType::Coin_5;
+						break;
+					case Coin_5:
+						combineToType = CoinType::Coin_10;
+						break;
+					case Coin_10:
+						combineToType = CoinType::Coin_50;
+						break;
+					case Coin_50:
+						combineToType = CoinType::Coin_100;
+						break;
+					case Coin_100:
+						combineToType = CoinType::Coin_500;
+						break;
+					case Coin_500:
+						combineToType = CoinType::Coin_None;
+						break;
+				}
+
+				glm::ivec2 combineToPosition = *coinsToCombine.begin();
+				for (auto coin : coinsToCombine)
+				{
+					if (coin.x * coin.y < combineToPosition.x * combineToPosition.y)
+					{
+						combineToPosition = coin;
+					}
+					m_coins[coin.x][coin.y] = CoinType::Coin_None;
+				}
+
+				m_coins[combineToPosition.x][combineToPosition.y] = combineToType;
+
+				// Replace the coins that are being combined
 			}
 
 			m_holdingCoin = Coin_None;
@@ -136,6 +178,63 @@ void Board::MoveCoinsDown()
 			m_coins[x][y] = CoinType::Coin_None;
 		}
 	}
+}
+
+bool Board::CombineCoins(glm::ivec2 position, std::unordered_set<glm::ivec2>& coinsToCombine)
+{
+	int32 coinsRequiredToCombine = 0;
+
+	CoinType coinToCombine = m_coins[position.x][position.y];
+
+	switch (coinToCombine)
+	{
+		case Coin_1:
+		case Coin_10:
+		case Coin_100:
+			coinsRequiredToCombine = 5;
+			break;
+
+		case Coin_5:
+		case Coin_50:
+		case Coin_500:
+			coinsRequiredToCombine = 2;
+			break;
+
+		case Coin_None:
+		case Coin_RU:
+		case Coin_ER:
+		default:
+			return false;
+	}
+
+	CheckCoinRecursive(position, coinToCombine, coinsToCombine);
+	return coinsToCombine.size() >= coinsRequiredToCombine;
+}
+
+void Board::CheckCoinRecursive(glm::ivec2 position, CoinType interestedType, std::unordered_set<glm::ivec2>& coinsToCombine)
+{
+	if (position.x < 0 ||
+		position.y < 0 ||
+		position.x >= Size.x ||
+		position.y >= Size.y)
+	{
+		return;
+	}
+
+	CoinType coinToCombine = m_coins[position.x][position.y];
+	auto visitedCoin = coinsToCombine.find(glm::ivec2(position.x, position.y));
+
+	if (coinToCombine != interestedType ||
+		visitedCoin != coinsToCombine.end())
+	{
+		return;
+	}
+
+	coinsToCombine.emplace(position);
+	CheckCoinRecursive(position + glm::ivec2(0, 1), coinToCombine, coinsToCombine);
+	CheckCoinRecursive(position + glm::ivec2(1, 0), coinToCombine, coinsToCombine);
+	CheckCoinRecursive(position + glm::ivec2(-1, 0), coinToCombine, coinsToCombine);
+	CheckCoinRecursive(position + glm::ivec2(0, -1), coinToCombine, coinsToCombine);
 }
 
 void Board::Render(Shader* shader, const uint32& vao, const uint32& ebo)

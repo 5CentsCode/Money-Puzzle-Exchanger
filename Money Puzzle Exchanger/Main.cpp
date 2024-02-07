@@ -81,7 +81,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	glfwWindowHint(GLFW_FLOATING, GL_TRUE);
+	glfwWindowHint(GLFW_FLOATING, GL_FALSE);
 
 	GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE.x, WINDOW_SIZE.y, "Money Puzzle Exchanger", NULL, NULL);
 	if (window == NULL)
@@ -187,6 +187,23 @@ int main()
 		if (Input::IsKeyPressed(Key_W))
 		{
 			board1.ThrowCoinsInColumn();
+		}
+
+		if (Input::IsKeyPressed(Key_H))
+		{
+			board2.MoveCharacterLeft();
+		}
+		else if (Input::IsKeyPressed(Key_K))
+		{
+			board2.MoveCharacterRight();
+		}
+		if (Input::IsKeyPressed(Key_J))
+		{
+			board2.GrabCoinsInColumn();
+		}
+		if (Input::IsKeyPressed(Key_U))
+		{
+			board2.ThrowCoinsInColumn();
 		}
 
 		deltaTime = (float)glfwGetTime() - totalTime;
