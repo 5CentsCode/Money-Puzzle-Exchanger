@@ -91,7 +91,7 @@ void Board::ThrowCoinsInColumn(void)
 				glm::ivec2 combineToPosition = *coinsToCombine.begin();
 				for (auto coin : coinsToCombine)
 				{
-					if (coin.x * coin.y < combineToPosition.x * combineToPosition.y)
+					if (coin.x + (coin.y * Size.x) < combineToPosition.x + (combineToPosition.y * Size.x))
 					{
 						combineToPosition = coin;
 					}
@@ -99,13 +99,12 @@ void Board::ThrowCoinsInColumn(void)
 				}
 
 				m_coins[combineToPosition.x][combineToPosition.y] = combineToType;
-
-				// Replace the coins that are being combined
 			}
 
 			m_holdingCoin = Coin_None;
 			m_holdingCoinCount = 0;
 
+			FillCoinGaps();
 			return;
 		}
 	}
@@ -131,51 +130,6 @@ void Board::GrabCoinsInColumn(void)
 			m_holdingCoin = coin;
 			m_coins[m_currentColumn - 1][y] = Coin_None;
 			m_holdingCoinCount++;
-		}
-	}
-}
-
-void Board::GenerateGarbage(uint8 rows)
-{
-	for (int32 y = 0; y < rows; y++)
-	{
-		MoveCoinsDown();
-
-		for (int32 x = 0; x < Size.x; x++)
-		{
-			m_coins[x][Size.y - 1] = (CoinType)((rand() % 6) + 1);
-		}
-	}
-}
-
-void Board::ClearBoard()
-{
-	for (int32 y = 0; y < Size.y; y++)
-	{
-		for (int32 x = 0; x < Size.x; x++)
-		{
-			m_coins[x][y] = CoinType::Coin_None;
-		}
-	}
-
-	GenerateGarbage(rand() % Size.y);
-}
-
-void Board::MoveCoinsDown()
-{
-	for (int32 y = 1; y < Size.y; y++)
-	{
-		for (int32 x = 0; x < Size.x; x++)
-		{
-			if (y == 1 &&
-				m_coins[x][y - 1] != CoinType::Coin_None)
-			{
-				ClearBoard();
-				return;
-			}
-
-			m_coins[x][y - 1] = m_coins[x][y];
-			m_coins[x][y] = CoinType::Coin_None;
 		}
 	}
 }
@@ -235,6 +189,68 @@ void Board::CheckCoinRecursive(glm::ivec2 position, CoinType interestedType, std
 	CheckCoinRecursive(position + glm::ivec2(1, 0), coinToCombine, coinsToCombine);
 	CheckCoinRecursive(position + glm::ivec2(-1, 0), coinToCombine, coinsToCombine);
 	CheckCoinRecursive(position + glm::ivec2(0, -1), coinToCombine, coinsToCombine);
+}
+
+void Board::FillCoinGaps()
+{
+	for (int32 x = Size.x - 1; x >= 0; x--)
+	{
+		for (int32 y = Size.y - 1; y > 0; y--)
+		{
+			if (m_coins[x][y] == CoinType::Coin_None &&
+				m_coins[x][y - 1] != CoinType::Coin_None)
+			{
+				m_coins[x][y] = m_coins[x][y - 1];
+				m_coins[x][y - 1] = CoinType::Coin_None;
+				y = glm::min(Size.y, y + 2);
+			}
+		}
+	}
+}
+
+void Board::GenerateGarbage(uint8 rows)
+{
+	for (int32 y = 0; y < rows; y++)
+	{
+		MoveCoinsDown();
+
+		for (int32 x = 0; x < Size.x; x++)
+		{
+			m_coins[x][Size.y - 1] = (CoinType)((rand() % 6) + 1);
+		}
+	}
+}
+
+void Board::ClearBoard()
+{
+	for (int32 y = 0; y < Size.y; y++)
+	{
+		for (int32 x = 0; x < Size.x; x++)
+		{
+			m_coins[x][y] = CoinType::Coin_None;
+		}
+	}
+
+	GenerateGarbage(rand() % Size.y);
+}
+
+void Board::MoveCoinsDown()
+{
+	for (int32 y = 1; y < Size.y; y++)
+	{
+		for (int32 x = 0; x < Size.x; x++)
+		{
+			if (y == 1 &&
+				m_coins[x][y - 1] != CoinType::Coin_None)
+			{
+				ClearBoard();
+				return;
+			}
+
+			m_coins[x][y - 1] = m_coins[x][y];
+			m_coins[x][y] = CoinType::Coin_None;
+		}
+	}
 }
 
 void Board::Render(Shader* shader, const uint32& vao, const uint32& ebo)

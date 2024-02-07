@@ -24,15 +24,17 @@ public:
 
 	void MoveCharacterLeft(void);
 	void MoveCharacterRight(void);
+
 	void ThrowCoinsInColumn(void);
 	void GrabCoinsInColumn(void);
+
+	bool CombineCoins(glm::ivec2 position, std::unordered_set<glm::ivec2>& coinsToCombine);
+	void CheckCoinRecursive(glm::ivec2 position, CoinType interestedType, std::unordered_set<glm::ivec2>& coinsToCombine);
+	void FillCoinGaps();
 
 	void GenerateGarbage(uint8 rows);
 	void ClearBoard();
 	void MoveCoinsDown();
-
-	bool CombineCoins(glm::ivec2 position, std::unordered_set<glm::ivec2>& coinsToCombine);
-	void CheckCoinRecursive(glm::ivec2 position, CoinType interestedType, std::unordered_set<glm::ivec2>& coinsToCombine);
 
 	void Render(class Shader* shader, const uint32& vao, const uint32& ebo);
 
